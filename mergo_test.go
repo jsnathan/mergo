@@ -6,6 +6,7 @@
 package mergo
 
 import (
+	"encoding/json"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"reflect"
@@ -723,5 +724,80 @@ func TestBooleanPointer(t *testing.T) {
 	}
 	if *dst.C != *src.C {
 		t.Fatalf("dst.C should be true")
+	}
+}
+
+type structWithNumberFields struct {
+	I8  int8
+	I16 int16
+	I32 int32
+	I64 int64
+	I   int
+	U8  uint8
+	U16 uint16
+	U32 uint32
+	U64 uint64
+	U   uint
+	F32 float32
+	F64 float64
+}
+
+func TestJsonNumbers(t *testing.T) {
+	numInt := json.Number("-1")
+	numUInt := json.Number("1")
+	numFloat := json.Number("1.2")
+	src := map[string]interface{}{
+		"i8":  numInt,
+		"i16": numInt,
+		"i32": numInt,
+		"i64": numInt,
+		"i":   numInt,
+		"u8":  numUInt,
+		"u16": numUInt,
+		"u32": numUInt,
+		"u64": numUInt,
+		"u":   numUInt,
+		"f32": numFloat,
+		"f64": numFloat,
+	}
+	dst := structWithNumberFields{}
+	if err := Map(&dst, src); err != nil {
+		t.FailNow()
+	}
+	if dst.I8 != -1 {
+		t.Fatalf("dst.I8 should be int8(-1), but it is %d", dst.I8)
+	}
+	if dst.I16 != -1 {
+		t.Fatalf("dst.I16 should be int16(-1), but it is %d", dst.I16)
+	}
+	if dst.I32 != -1 {
+		t.Fatalf("dst.I32 should be int32(-1), but it is %d", dst.I32)
+	}
+	if dst.I64 != -1 {
+		t.Fatalf("dst.I64 should be int64(-1), but it is %d", dst.I64)
+	}
+	if dst.I != -1 {
+		t.Fatalf("dst.I should be int(-1), but it is %d", dst.I)
+	}
+	if dst.U8 != 1 {
+		t.Fatalf("dst.U8 should be uint8(1), but it is %d", dst.U8)
+	}
+	if dst.U16 != 1 {
+		t.Fatalf("dst.U16 should be uint16(1), but it is %d", dst.U16)
+	}
+	if dst.U32 != 1 {
+		t.Fatalf("dst.U32 should be uint32(1), but it is %d", dst.U32)
+	}
+	if dst.U64 != 1 {
+		t.Fatalf("dst.U64 should be uint64(1), but it is %d", dst.U64)
+	}
+	if dst.U != 1 {
+		t.Fatalf("dst.U should be uint(1), but it is %d", dst.U)
+	}
+	if dst.F32 != 1.2 {
+		t.Fatalf("dst.F32 should be float32(1.2), but it is %f", dst.F32)
+	}
+	if dst.F64 != 1.2 {
+		t.Fatalf("dst.F64 should be float64(1.2), but it is %f", dst.F64)
 	}
 }

@@ -9,6 +9,7 @@
 package mergo
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"unicode"
@@ -75,11 +76,18 @@ func deepMap(dst, src reflect.Value, visited map[uintptr]*visit, depth int, conf
 			srcValue := srcMap[key]
 			fieldName := changeInitialCase(key, unicode.ToUpper)
 			dstElement := dst.FieldByName(fieldName)
+			srcElement := reflect.ValueOf(srcValue)
+			if srcElement.Type() == reflect.TypeOf(json.Number("")) {
+				err = jsonNumberTransformer(dstElement, srcElement)
+				if err != nil {
+					return
+				}
+				continue
+			}
 			if dstElement == zeroValue {
 				// We discard it because the field doesn't exist.
 				continue
 			}
-			srcElement := reflect.ValueOf(srcValue)
 			dstKind := dstElement.Kind()
 			srcKind := srcElement.Kind()
 			if srcKind == reflect.Ptr && dstKind != reflect.Ptr {
@@ -171,4 +179,38 @@ func _map(dst, src interface{}, opts ...func(*config)) error {
 		return ErrNotSupported
 	}
 	return deepMap(vDst, vSrc, make(map[uintptr]*visit), 0, config)
+}
+
+func jsonNumberTransformer(dst, src reflect.Value) error {
+	if dst.CanSet() != true {
+		return fmt.Errorf("number field not settable")
+	}
+	num := src.Interface().(json.Number)
+	switch dst.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		numAsInt64, err := num.Int64()
+		if err != nil {
+			return err
+		}
+		dst.SetInt(numAsInt64)
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		numAsInt64, err := num.Int64()
+		if err != nil {
+			return err
+		}
+		if numAsInt64 < 0 {
+			return fmt.Errorf("cannot assign negative json.Number to unsigned integer field")
+		}
+		dst.SetUint(uint64(numAsInt64))
+
+	case reflect.Float32, reflect.Float64:
+		numAsFloat64, err := num.Float64()
+		if err != nil {
+			return err
+		}
+		dst.SetFloat(numAsFloat64)
+	default:
+		return fmt.Errorf("cannot assign json.Number to non-number field")
+	}
+	return nil
 }
