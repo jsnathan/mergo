@@ -29,6 +29,7 @@ type Config struct {
 	Overwrite    bool
 	AppendSlice  bool
 	Transformers Transformers
+  NumberConversion bool
 }
 
 type Transformers interface {
@@ -223,6 +224,11 @@ func WithTransformers(transformers Transformers) func(*Config) {
 // WithOverride will make merge override non-empty dst attributes with non-empty src attributes values.
 func WithOverride(config *Config) {
 	config.Overwrite = true
+}
+
+// WithNumberConversion will make merge convert numbers from floats to integers, or the reverse, as needed. This may lose accuracy.
+func WithNumberConversion(config *Config) {
+	config.NumberConversion = true
 }
 
 // WithAppendSlice will make merge append slices instead of overwriting it

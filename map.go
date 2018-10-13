@@ -117,7 +117,9 @@ func deepMap(dst, src reflect.Value, visited map[uintptr]*visit, depth int, conf
 				if err = deepMap(dstElement, srcElement, visited, depth+1, config); err != nil {
 					return
 				}
-			} else {
+			} else if config.NumberConversion && convertNumber(dstElement, srcElement) {
+        continue
+      } else {
 				return fmt.Errorf("type mismatch on %s field: found %v, expected %v", fieldName, srcKind, dstKind)
 			}
 		}
@@ -213,4 +215,52 @@ func jsonNumberTransformer(dst, src reflect.Value) error {
 		return fmt.Errorf("cannot assign json.Number to non-number field")
 	}
 	return nil
+}
+
+func convertNumber(dst, src reflect.Value) bool {
+	switch src.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+    return storeNumber(dst, src.Int())
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+    return storeNumber(dst, src.Uint())
+	case reflect.Float32, reflect.Float64:
+    return storeNumber(dst, src.Float())
+	default:
+    fmt.Printf("unknown number src format: %v\n", src.Kind())
+		return false
+	}
+}
+
+func storeNumber(dst reflect.Value, num interface{}) bool {
+	if dst.CanSet() != true {
+    fmt.Printf("cannot set dst to %v (field not writeable?)\n", num)
+		return false
+	}
+	switch dst.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+    switch n := num.(type) {
+      case uint64: dst.SetInt(int64(n))
+      case float64: dst.SetInt(int64(n))
+      case int64: dst.SetInt(n)
+      default: panic(fmt.Sprintf("Unknown number type passed: %T", num))
+    }
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+    switch n := num.(type) {
+      case uint64: dst.SetUint(n)
+      case float64: dst.SetUint(uint64(n))
+      case int64: dst.SetUint(uint64(n))
+      default: panic(fmt.Sprintf("Unknown number type passed: %T", num))
+    }
+	case reflect.Float32, reflect.Float64:
+    switch n := num.(type) {
+      case uint64: dst.SetFloat(float64(n))
+      case float64: dst.SetFloat(n)
+      case int64: dst.SetFloat(float64(n))
+      default: panic(fmt.Sprintf("Unknown number type passed: %T", num))
+    }
+	default:
+    fmt.Printf("cannot set number to non-number field dst of kind %v\n", dst.Kind())
+		return false
+	}
+  return true
 }

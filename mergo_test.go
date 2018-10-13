@@ -808,6 +808,66 @@ func TestJsonNumbers(t *testing.T) {
   }
 }
 
+func TestMergeMapWithNumberConversion(t *testing.T) {
+	src := map[string]interface{}{
+		"i8":  float64(-1),
+		"i16": float64(-1),
+		"i32": float64(-1),
+		"i64": float64(-1),
+		"i":   float64(-1),
+		"u8":  float64(1),
+		"u16": float64(1),
+		"u32": float64(1),
+		"u64": float64(1),
+		"u":   float64(1),
+		"f32": int(-1),
+		"f64": uint64(1),
+	}
+	dst := structWithNumberFields{}
+	if err := Map(&dst, src); err == nil {
+		t.Fatalf("erroneously converted numbers when WithNumberConversion was not used")
+	}
+	if err := Map(&dst, src, WithNumberConversion); err != nil {
+    t.Fatalf("failed to convert numbers, even though WithNumberConversion was used: %s", err)
+	}
+	if dst.I8 != -1 {
+		t.Fatalf("dst.I8 should be int8(-1), but it is %d", dst.I8)
+	}
+	if dst.I16 != -1 {
+		t.Fatalf("dst.I16 should be int16(-1), but it is %d", dst.I16)
+	}
+	if dst.I32 != -1 {
+		t.Fatalf("dst.I32 should be int32(-1), but it is %d", dst.I32)
+	}
+	if dst.I64 != -1 {
+		t.Fatalf("dst.I64 should be int64(-1), but it is %d", dst.I64)
+	}
+	if dst.I != -1 {
+		t.Fatalf("dst.I should be int(-1), but it is %d", dst.I)
+	}
+	if dst.U8 != 1 {
+		t.Fatalf("dst.U8 should be uint8(1), but it is %d", dst.U8)
+	}
+	if dst.U16 != 1 {
+		t.Fatalf("dst.U16 should be uint16(1), but it is %d", dst.U16)
+	}
+	if dst.U32 != 1 {
+		t.Fatalf("dst.U32 should be uint32(1), but it is %d", dst.U32)
+	}
+	if dst.U64 != 1 {
+		t.Fatalf("dst.U64 should be uint64(1), but it is %d", dst.U64)
+	}
+	if dst.U != 1 {
+		t.Fatalf("dst.U should be uint(1), but it is %d", dst.U)
+	}
+	if dst.F32 != -1 {
+		t.Fatalf("dst.F32 should be float32(-1), but it is %f", dst.F32)
+	}
+	if dst.F64 != 1 {
+		t.Fatalf("dst.F64 should be float64(1), but it is %f", dst.F64)
+  }
+}
+
 func TestMergeMapWithInnerSliceOfDifferentType(t *testing.T) {
 	src := map[string]interface{}{
 		"foo": []string{"a", "b"},
