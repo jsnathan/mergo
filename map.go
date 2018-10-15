@@ -77,6 +77,10 @@ func deepMap(dst, src reflect.Value, visited map[uintptr]*visit, depth int, conf
 			fieldName := changeInitialCase(key, unicode.ToUpper)
 			dstElement := dst.FieldByName(fieldName)
 			srcElement := reflect.ValueOf(srcValue)
+      if srcElement == zeroValue {
+				// We ignore it because otherwise things break.
+        continue
+      }
 			if srcElement.Type() == reflect.TypeOf(json.Number("")) {
 				err = jsonNumberTransformer(dstElement, srcElement)
 				if err != nil {

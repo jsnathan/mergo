@@ -733,6 +733,38 @@ func TestBooleanPointer(t *testing.T) {
 	}
 }
 
+type structWithEmptyFields struct {
+  Map map[string]interface{}
+  Slice []string
+  Num int
+}
+
+func TestIgnoreEmptySourceFields(t *testing.T) {
+  s := structWithEmptyFields{}
+  m := map[string]interface{}{
+    "Map": nil,
+    "Slice": nil,
+    "Num": 1,
+  }
+
+  defer func () {
+    if err := recover(); err != nil {
+      t.Fatalf("failed to process map with empty fields: %v", err)
+    }
+  }()
+
+  err := Map(&s, m)
+  if err != nil {
+    t.Fatalf("failed to process map with empty fields: %s", err)
+  }
+  if s.Num != 1 {
+    t.Fatalf("failed to fill .Num field from map")
+  }
+  if s.Map != nil || s.Slice != nil {
+    t.Fatalf("should still be nil")
+  }
+}
+
 type structWithNumberFields struct {
 	I8  int8
 	I16 int16
