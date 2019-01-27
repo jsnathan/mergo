@@ -9,7 +9,6 @@
 package mergo
 
 import (
-	"fmt"
 	"reflect"
 )
 
@@ -129,10 +128,37 @@ func deepMerge(dst, src reflect.Value, visited map[uintptr]*visit, depth int, co
 					if !isEmptyValue(src) && (overwrite || isEmptyValue(dst)) && !config.AppendSlice {
 						dstSlice = srcSlice
 					} else if config.AppendSlice {
-						if srcSlice.Type() != dstSlice.Type() {
-							return fmt.Errorf("cannot append two slice with different type (%s, %s)", srcSlice.Type(), dstSlice.Type())
-						}
-						dstSlice = reflect.AppendSlice(dstSlice, srcSlice)
+            if srcSlice.Type() != dstSlice.Type() {
+              elemType := dstSlice.Type().Elem()
+              for i := 0; i < srcSlice.Len(); i++ {
+                var v reflect.Value
+                if elemType.Kind() == reflect.Ptr {
+                  v = reflect.New(elemType.Elem())
+                } else {
+                  v = reflect.New(elemType)
+                }
+                s := srcSlice.Index(i)
+                if s.Kind() == reflect.Interface {
+                  s = s.Elem()
+                }
+                if s.Kind() == reflect.Map {
+                  if err = deepMap(v, s, visited, depth+1, config); err != nil {
+                    return
+                  }
+                } else {
+                  if err = deepMerge(v, s, visited, depth+1, config); err != nil {
+                    return
+                  }
+                }
+                if elemType.Kind() == reflect.Ptr {
+                  dstSlice.Set(reflect.Append(dstSlice, v))
+                } else {
+                  dstSlice.Set(reflect.Append(dstSlice, v.Elem()))
+                }
+              }
+            } else {
+              dstSlice.Set(reflect.AppendSlice(dstSlice, srcSlice))
+            }
 					}
 					dst.SetMapIndex(key, dstSlice)
 				}
@@ -156,9 +182,36 @@ func deepMerge(dst, src reflect.Value, visited map[uintptr]*visit, depth int, co
 			dst.Set(src)
 		} else if config.AppendSlice {
 			if src.Type() != dst.Type() {
-				return fmt.Errorf("cannot append two slice with different type (%s, %s)", src.Type(), dst.Type())
-			}
-			dst.Set(reflect.AppendSlice(dst, src))
+        elemType := dst.Type().Elem()
+        for i := 0; i < src.Len(); i++ {
+          var v reflect.Value
+          if elemType.Kind() == reflect.Ptr {
+            v = reflect.New(elemType.Elem())
+          } else {
+            v = reflect.New(elemType)
+          }
+          s := src.Index(i)
+          if s.Kind() == reflect.Interface {
+            s = s.Elem()
+          }
+          if s.Kind() == reflect.Map {
+            if err = deepMap(v, s, visited, depth+1, config); err != nil {
+              return
+            }
+          } else {
+            if err = deepMerge(v, s, visited, depth+1, config); err != nil {
+              return
+            }
+          }
+          if elemType.Kind() == reflect.Ptr {
+            dst.Set(reflect.Append(dst, v))
+          } else {
+            dst.Set(reflect.Append(dst, v.Elem()))
+          }
+        }
+			} else {
+			  dst.Set(reflect.AppendSlice(dst, src))
+      }
 		}
 	case reflect.Ptr:
 		fallthrough
